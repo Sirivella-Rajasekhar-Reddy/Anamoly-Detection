@@ -45,36 +45,24 @@ prompt = ChatPromptTemplate.from_messages([
     ]),
 ])
 
-app.config['UPLOAD_PATH'] = 'images/'
+app.config['UPLOAD_PATH'] = 'static/uploads'
 @app.route("/", methods=["GET", "POST"])
 def index():
     try:
         response=""
         if request.method == "POST":
-            uploaded_image = request.files("load_image")
-            print(type(uploaded_image))
-            print(uploaded_image)
-            if uploaded_image:
-                try:
-                    filename=secure_filename(uploaded_image.filename)
-                    uploaded_image.save(os.path.join(app.config['UPLOAD_PATH'], uploaded_image))
-                    print(1)
-                    # Open and read the image file as binary
-                    with open("images/"+uploaded_image, "rb") as image_file:
-                        image_data = base64.b64encode(image_file.read()).decode("utf-8")
-                    print(1)
-                    #invoke the model with the prompt and image data
-                    chain=prompt | llm
-
-                    response = chain.invoke({"image_data": image_data}).content
-                    print(response)
-                
-                except Exception as e:
-                    print("Error:", e)
-            else:
-                print("error")
-        
-        print(response)
+            f = request.files["load_image"]
+            print(f.filename)
+            filename="temp_file.jpg"
+            f.save(os.path.join(app.config['UPLOAD_PATH'], filename))
+            # Open and read the image file as binary
+            with open("static/uploads/"+filename, "rb") as image_file:
+                image_data = base64.b64encode(image_file.read()).decode("utf-8")
+            #invoke the model with the prompt and image data
+            chain=prompt | llm
+            response = chain.invoke({"image_data": image_data}).content
+            print(response)
+            return response
         return render_template("index.html", response=response)
     except Exception as e:
         print("The Error is : ", e)
