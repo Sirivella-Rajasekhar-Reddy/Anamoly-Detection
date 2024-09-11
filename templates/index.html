@@ -270,28 +270,17 @@
 </section>
 
 <div class="main" id="uploadSection">
-  <!-- <div class="tabs">
-    <button class="active" onclick="showTab('png')">PNG</button>
-    <button onclick="showTab('jpg')">JPG</button>
-    <button onclick="showTab('jpeg')">JPEG</button>
-  </div> -->
-
-  <form action="/" method="post" class="product-form" enctype="multipart/form-data">
+  <form action="/" method="POST" class="product-form" enctype="multipart/form-data">
     <label class="tab-content active">
-      <input type="file" name="load_image" accept="image/*" id="pngInput" style="display: none;" onchange="displayFileName(this)">
-      Upload PNG
+      <input type="file" name="load_image" id="input_image" style="display: none;" onchange="displayFileName(this)">
+      Upload Image
       <p class="file-name" id="pngFileName"></p>
     </label>
-    <!-- <button type="submit">Get Anomalies</button> -->
     <button class="btn" id="extractBtn" onclick="extractSteps()">Extract Steps</button>
   </form>
 
-  {% if response!="raja" %}
-    <p>{{response}}</p>
-  {% endif %}
-
   <div id="output" class="output-box" style="display: none;">
-    <!-- <img src="temp_image.png" alt="Image"> -->
+    <img src="static/uploads/temp_file.jpg" alt="Image">
     <h3>Extracted Steps</h3>
     <p id="steps"></p>
   </div>
@@ -307,22 +296,6 @@
     uploadSection.classList.add('show');
   }
 
-  function showTab(fileType) {
-    var contents = document.querySelectorAll('.tab-content');
-    var buttons = document.querySelectorAll('.tabs button');
-    
-    contents.forEach(function(content) {
-      content.classList.remove('active');
-    });
-    
-    buttons.forEach(function(button) {
-      button.classList.remove('active');
-    });
-
-    document.getElementById(fileType).classList.add('active');
-    event.target.classList.add('active');
-  }
-
   function displayFileName(input) {
     const fileName = input.files[0]?.name;
     const fileNameElement = input.nextElementSibling;
@@ -334,17 +307,16 @@
   }
 
   function extractSteps() {
-    const pngInput = document.getElementById('pngInput');
-    const jpgInput = document.getElementById('jpgInput');
-    const jpegInput = document.getElementById('jpegInput');
+    const input_image = document.getElementById('input_image');
 
-    if (!pngInput.files.length && !jpgInput.files.length && !jpegInput.files.length) {
+    if (!input_image.files.length) {
       alert('Please upload a file first.');
       return;
     }
 
     document.getElementById('output').style.display = 'block';
     document.getElementById('steps').innerText = 'Extracting steps from the document...';
+    document.getElementById('steps').innerText = response;
   }
 </script>
 
