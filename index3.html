@@ -143,14 +143,14 @@
     .tab-content {
       display: none;
       border: 2px dashed #1e90ff;
-      padding: 30px;
+      padding: 20px;
       background-color: white;
       text-align: center;
       cursor: pointer;
       transition: background-color 0.3s ease, border-color 0.3s ease;
-      width: 300px;
+      width: 250px;
       animation: fadeInUp 1.2s ease-in-out;
-      border-radius: 10px;
+      border-radius: 5px;
     }
 
     .tab-content.active {
@@ -314,7 +314,6 @@
       <p class="file-name" id="pngFileName"></p>
     </label>
     <button type="button" class="btn" id="extractBtn" onclick="extractSteps()">Extract Steps</button>
-    <!-- <button class="btn" id="extractBtn" onclick="extractSteps()">Extract Steps</button> -->
   </form>
 
   <div id="output" class="output-box" style="display: none;">
@@ -439,7 +438,7 @@
             subTableHeader.appendChild(descriptionHeader);
             subTable.appendChild(subTableHeader);
 
-            content[0].forEach(item => {
+            content.forEach(item => {
                 const subTableRow = document.createElement('tr');
 
                 const locationCell = document.createElement('td');
@@ -455,16 +454,16 @@
 
             detailsCell.appendChild(subTable);
         } else {
-            if (Array.isArray(content[0])) {
+            if (Array.isArray(content)) {
                 const ul = document.createElement('ul');
-                content[0].forEach(point => {
+                content.forEach(point => {
                     const li = document.createElement('li');
                     li.textContent = point;
                     ul.appendChild(li);
                 });
                 detailsCell.appendChild(ul);
             } else {
-                detailsCell.textContent = content[0];
+                detailsCell.textContent = content;
             }
         }
 
