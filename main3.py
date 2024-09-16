@@ -1,12 +1,10 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from PIL import Image
+from langchain_core.output_parsers import JsonOutputParser
 import base64
-import os, json
-import pandas as pd
+import os
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
 from flask import Flask, render_template, request, jsonify
-from werkzeug.utils import secure_filename
 
 
 app = Flask(__name__)
@@ -17,29 +15,31 @@ load_dotenv()
 google_api_key=os.getenv("GEMINI_API_KEY")
 llm=ChatGoogleGenerativeAI(model="gemini-1.5-flash", api_key=google_api_key)
 
-# {"system": "Example Analysis: In the uploaded image, an anomaly was detected in the revenue trend where a sudden spike is observed around Q3 2023. This spike might indicate a data entry error or a significant event that needs further investigation."},
-#     {"system": "Another Example: The image shows a decline in sales data with an unusual dip at the end of the period. This could suggest a potential issue in sales reporting or an actual drop in performance."},
-
-examples = [{
-    "system": """[{
-                "analysis" : "The provided image shows a Power BI report on key leave patterns. The report presents data on sick leave per FTE, monthly annual leave, and a breakdown of leave by department and employee.",
-                "anomalies" : [{
-                                    "location" : "The anomaly is located in the *Over Time Analysis (Sick Leave per FTE)* section of the report",
-                                    "description" : "No anomalies: This chart appears to show a stable trend with no significant spikes or dips.",
-                                },
-                               {
-                                    "location" : "The anomaly is located in the *Over Time Analysis (Monthly Annual Leave)* section of the report, specifically the *Year Over Year Growth (Red Line)* line",
-                                    "description" : "The red line representing "Year Over Year Growth" shows a sharp decline from July to August 2017. This is a significant drop and could indicate a potential issue with employee sick leave patterns during that period. Further investigation is needed to understand the reasons behind this sudden decline.",
-                                }]
-                "additional-observation" : "* The report shows a relatively consistent number of days of sick leave per FTE from 2015 to 2017.
-                                            * The "Days Annual Leave" (blue bars) indicate a peak in January 2017, suggesting a possible seasonal pattern.
-                                            * The breakdown of leave by department and employee suggests that Sales has the highest percentage of leave days.",
-                "recommendations" :   " * Investigate the reasons behind the sharp decline in "Year Over Year Growth" in July/August 2017. This could involve analyzing employee data for that period, checking for any changes in company policies, or identifying any external factors that might have impacted leave patterns.
-                                        * Further analyze the seasonal pattern in "Days Annual Leave" to understand potential drivers and plan accordingly.
-                                        * Explore the reasons behind the higher percentage of leave days in the Sales department. This could be related to factors like workload, stress levels, or specific industry trends.",
-                "conclusion" : "By investigating these anomalies and observations, the company can gain a deeper understanding of its leave patterns and identify areas for improvement."
-            }]"""
-    }
+examples = [
+    {"system": """[
+                    {'analysis': 'The Power BI report displays stacked bar charts showing quantity and sales by product category and region. The chart uses four colors to represent the regions: Central, East, South, and West.', 
+                    'anomalies': [{'location': 'Office Supplies - West', 'description': 'The West region shows a significant spike in sales for Office Supplies compared to the other regions. This could be due to a large order or a promotion specific to the West region.'}, 
+                                {'location': 'Technology - West', 'description': 'The West region also has the highest sales for Technology products, but the difference compared to other regions is not as pronounced as with Office Supplies.'}, 
+                                {'location': 'Furniture - Central', 'description': 'The Central region has a surprisingly low quantity for Furniture compared to the other regions. This could indicate a potential supply chain issue or a lack of demand for Furniture in the Central region.'}], 
+                    'additional-observation': 'The report shows a general trend of higher sales in the West region for all product categories. This could indicate a stronger market presence or more successful marketing efforts in the West.', 
+                    'recommendations': 'Investigate the reasons behind the anomalies observed in the report. This could involve analyzing sales data, customer demographics, and marketing campaigns to identify potential factors contributing to the discrepancies. Consider adjusting strategies or addressing supply chain issues to optimize sales performance in each region.', 
+                    'conclusion': 'By analyzing the anomalies and observing the trends in the report, the company can identify areas for improvement and make data-driven decisions to enhance its overall sales performance.'
+                    }
+                ]"""},
+    {"system": """[
+                    {'analysis': 'The Power BI report visualizes data related to employee sick leave patterns. It includes a line chart showing the trend of sick leave per FTE over time, a bar chart representing monthly annual leave, and a breakdown of sick leave days by department and employee.', 
+                    'anomalies': [{'location': 'Year-over-Year Growth in Monthly Annual Leave', 'description': 'There is a significant spike in the Year-over-Year Growth of Monthly Annual Leave in July 2017. This suggests a sudden increase in sick leave days compared to the previous year. It could be due to an unexpected event or a change in company policy.'}, 
+                                {'location': 'Sick Leave per FTE in 2017', 'description': 'The Sick Leave per FTE in 2017 is slightly lower than in 2016. This could indicate a potential improvement in employee health or a change in workplace environment.'}, 
+                                {'location': 'Department Breakdown of Sick Leave Days', 'description': 'The Sales department has a significantly higher percentage of sick leave days compared to other departments (27.2%). This could be due to factors like higher workload, stress, or a higher proportion of employees susceptible to illness.'}, 
+                                {'location': 'Employee Sick Leave Taken by FY', 'description': 'Glad is the employee with the highest number of sick leave days (25) in the given fiscal year. This could be a cause for concern and requires further investigation to understand the reasons behind this high number.'}], 
+                    'additional-observation': 'The report shows a general trend of decreasing sick leave per FTE from 2015 to 2017, which could indicate positive changes in employee well-being. However, the spike in year-over-year growth in July 2017 requires further analysis to understand its cause.', 
+                    'recommendations': ['Investigate the cause of the spike in year-over-year growth in July 2017. This could involve analyzing employee data, company events, and any policy changes that might have occurred during that period.', 
+                                        'Examine the reasons behind the high sick leave days in the Sales department. This could involve analyzing workload, employee stress levels, and workplace environment factors.', 
+                                        'Further investigate the high sick leave days taken by Glad. This could involve reviewing medical records, assessing work environment factors, and providing necessary support to improve their well-being.', 
+                                        'Continue monitoring the sick leave trends over time to identify any recurring patterns or emerging issues that require attention.'], 
+                    'conclusion': 'The Power BI report provides valuable insights into employee sick leave patterns. By analyzing the anomalies and observing the trends, the company can address potential issues, improve employee well-being, and optimize workplace productivity.'
+                    }
+            ]"""}
 ]
 example_prompt = ChatPromptTemplate.from_messages(
     [
@@ -77,19 +77,11 @@ def index():
             # Open and read the image file as binary
             with open("static/uploads/"+filename, "rb") as image_file:
                 image_data = base64.b64encode(image_file.read()).decode("utf-8")
+            output_parser=JsonOutputParser()
             #invoke the model with the prompt and image data
-            chain=prompt | llm
-            resp = chain.invoke({"image_data": image_data}).content
-            # print(resp)
-            start_index=resp.index("[")
-            end_index=resp.rindex("]")
-            json_array=resp[start_index:end_index+1]
-            json_load=json.loads(json_array)
-            response=pd.DataFrame(json_load).to_dict()
-            print(response)
-
-
-            return jsonify({"status": "success", "response": response, "image_url": f"/static/uploads/temp_file.jpg"})
+            chain=prompt | llm | output_parser
+            resp = chain.invoke({"image_data": image_data})
+            return jsonify({"status": "success", "response": resp[0], "image_url": f"/static/uploads/temp_file.jpg"})
         return render_template("index.html")
     except Exception as e:
         print("The Error is : ", e)
