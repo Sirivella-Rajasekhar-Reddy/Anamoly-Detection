@@ -373,12 +373,14 @@
     })
     .then(response => response.json())
     .then(data => {
+      console.log(data.response);
       if (data.status === "success") {
         steps.innerText = ""
         // Update the image dynamically
         const newImageUrl = data.image_url + '?t=' + new Date().getTime();  // Add timestamp to prevent caching
         uploadedImage.src = newImageUrl;  // Update the image source with the new URL
         uploadedImage.alt = 'Uploaded Image';  // Update the alt text if needed
+        data.response = reorderKeys(data.response);
         populateTable(data.response)
       } else {
         steps.innerText = 'Error: ' + data.message;
@@ -390,14 +392,29 @@
     });
   }
 
+  function reorderKeys(obj) {
+    const order = ['analysis', 'anomalies', 'additional-observation', 'recommendations', 'conclusion'];
+    const reordered = {};
+    order.forEach(key => {
+        if (obj.hasOwnProperty(key)) {
+            reordered[key] = obj[key];
+        }
+    });
+    return reordered;
+  }
+
+
   function populateTable(data) {
     const tableBody = document.querySelector('#dynamicTable tbody');
 
     // Clear the existing table content
     tableBody.innerHTML = '';
 
-    // Loop through the dictionary data and create rows
-    for (const [section, content] of Object.entries(data)) {
+    console.log(data)
+
+    // Loop through the dictionary data in the order they appear (without sorting)
+    Object.keys(data).forEach(section => {
+        const content = data[section];
         const row = document.createElement('tr');
         
         // Create the "Section" cell
@@ -410,11 +427,9 @@
         
         // Check if the content is an array of objects (e.g., anomalies)
         if (section === 'anomalies') {
-            // Create a nested table for anomalies with location and description headers
             const subTable = document.createElement('table');
             subTable.classList.add('sub-table');
             
-            // Create the sub-table header
             const subTableHeader = document.createElement('tr');
             const locationHeader = document.createElement('th');
             locationHeader.textContent = 'Location';
@@ -424,52 +439,40 @@
             subTableHeader.appendChild(descriptionHeader);
             subTable.appendChild(subTableHeader);
 
-            // Loop through each anomaly entry and add rows for location and description
             content[0].forEach(item => {
                 const subTableRow = document.createElement('tr');
 
                 const locationCell = document.createElement('td');
-                if(item.location){
-                  locationCell.textContent = item.location;
-                }
-                else{
-                  locationCell.textContent=""
-                }
+                locationCell.textContent = item.location || "";
                 subTableRow.appendChild(locationCell);
 
                 const descriptionCell = document.createElement('td');
-                if(item.location){
-                  descriptionCell.textContent = item.description;
-                }
-                else{
-                  descriptionCell.textContent=item
-                }
+                descriptionCell.textContent = item.description || item;
                 subTableRow.appendChild(descriptionCell);
 
                 subTable.appendChild(subTableRow);
             });
 
-            // Append the sub-table to the details cell
             detailsCell.appendChild(subTable);
         } else {
-          if (Array.isArray(content[0])) {
-            const ul = document.createElement('ul');
-            content[0].forEach(point => {
-                const li = document.createElement('li');
-                li.textContent = point;
-                ul.appendChild(li);
-            });
-            detailsCell.appendChild(ul);
-          } else {
-              detailsCell.textContent = content[0];
-          }
+            if (Array.isArray(content[0])) {
+                const ul = document.createElement('ul');
+                content[0].forEach(point => {
+                    const li = document.createElement('li');
+                    li.textContent = point;
+                    ul.appendChild(li);
+                });
+                detailsCell.appendChild(ul);
+            } else {
+                detailsCell.textContent = content[0];
+            }
         }
+
         row.appendChild(detailsCell);
-        
-        // Append the row to the table body
         tableBody.appendChild(row);
-    }
-  }
+    });
+}
+
   
 </script>
 
